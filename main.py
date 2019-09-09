@@ -10,9 +10,8 @@ import torchvision.transforms as transforms
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # hyper parameters
-num_epochs = 5
-num_classes = 10
-batch_size = 64
+num_epochs = 10
+batch_size = 128
 learning_rate = 1e-3
 
 # dataset
@@ -21,57 +20,70 @@ train_dataset = datasets.MNIST(root='./dataset/mnist',
                                download=True,
                                transform=transforms.Compose([
                                    transforms.Resize((32, 32)), 
-                                   transforms.ToTensor()]))
+                                   transforms.ToTensor(),
+                                   transforms.Normalize((0,), (1,)),
+                               ]))
 test_dataset = datasets.MNIST(root='./dataset/mnist',
                               train=False,
                               download=True,
                               transform=transforms.Compose([
                                   transforms.Resize((32, 32)), 
-                                  transforms.ToTensor()]))
+                                  transforms.ToTensor(),
+                                  transforms.Normalize((0,), (1,)),
+                              ]))
 
 # dataloader
 train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                            batch_size=batch_size, 
                                            shuffle=True,
-                                           num_workers=2,
                                            drop_last=True)
 test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
                                           batch_size=batch_size, 
-                                          shuffle=True,
-                                          num_workers=2,
+                                          shuffle=False,
                                           drop_last=True)
                                           
 # model
 class LeNet5(nn.Module):
     def __init__(self):
         super(LeNet5, self).__init__()
-
-        C1 = nn.Conv2d(1, 6, kernel_size=5)
-        S2 = nn.MaxPool2d(kernel_size=2, stride=2)
-        C3 = nn.Conv2d(6, 16, kernel_size=5)
-        S4 = nn.MaxPool2d(kernel_size=2, stride=2)
-        C5 = nn.Conv2d(16, 120, kernel_size=5)
+        
+        C1 = nn.Conv2d(1, 6, 5)
+        S2 = nn.MaxPool2d(2, 2)
+        C3 = nn.Conv2d(6, 16, 5)
+        S4 = nn.MaxPool2d(2, 2)
+        C5 = nn.Conv2d(16, 120, 5)
         F6 = nn.Linear(120, 84)
         OUTPUT = nn.Linear(84, 10)
 
-        self.model = nn.Sequential(
+        AV = nn.Tanh()
+        self.conv = nn.Sequential(
             C1,
+            AV,
             S2,
             C3,
+            AV,
             S4,
             C5,
+            AV,
+        )
+        self.fc = nn.Sequential(
             F6,
-            OUTPUT
+            AV,
+            OUTPUT,
+            nn.Softmax(dim=-1),
         )
 
     def forward(self, x):
-        return self.model(x)
+        conv_output = self.conv(x)
+        conv_output_reshaped = conv_output.view(x.size(0), -1)
+        fc_output = self.fc(conv_output_reshaped)
+        return fc_output
 
 model = LeNet5().to(device)
 
 # loss and optimizer
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 
 # train model
 total_step = len(train_loader)
@@ -95,17 +107,18 @@ for epoch in range(num_epochs):
                 .format(epoch+1, num_epochs, i+1, total_step, loss.item()))
 
 # test model
-model.eval()  
+model.eval()
 with torch.no_grad():
     correct = 0
     total = 0
     for images, labels in test_loader:
         images = images.to(device)
         labels = labels.to(device)
+        
         outputs = model(images)
         _, predicted = torch.max(outputs.data, 1)
         total += labels.size(0)
         correct += (predicted == labels).sum().item()
 
-    print('Test Accuracy of the model on the 10000 test images: {} %'.format(100 * correct / total))
-
+    print('Test Accuracy of the model on the 10000 test images: {} %'
+          .format(100 * correct / total))
