@@ -53,23 +53,22 @@ class LeNet5(nn.Module):
         S4 = nn.MaxPool2d(2, 2)
         C5 = nn.Conv2d(16, 120, 5)
         F6 = nn.Linear(120, 84)
-        OUTPUT = nn.Linear(84, 10)
+        OP = OUTPUT = nn.Linear(84, 10)
 
-        AV = nn.Tanh()
         self.conv = nn.Sequential(
             C1,
-            AV,
+            nn.Tanh(),
             S2,
             C3,
-            AV,
+            nn.Tanh(),
             S4,
             C5,
-            AV,
+            nn.Tanh(),
         )
         self.fc = nn.Sequential(
             F6,
-            AV,
-            OUTPUT,
+            nn.Tanh(),
+            OP,
             nn.Softmax(dim=-1),
         )
 
@@ -120,5 +119,5 @@ with torch.no_grad():
         total += labels.size(0)
         correct += (predicted == labels).sum().item()
 
-    print('Test Accuracy of the model on the 10000 test images: {} %'
+    print('Test Accuracy of the model on the test images: {} %'
           .format(100 * correct / total))
