@@ -10,9 +10,9 @@ import torchvision.transforms as transforms
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # hyper parameters
-num_epochs = 10
+num_epochs = 20
 batch_size = 128
-learning_rate = 1e-3
+learning_rate = 0.1
 
 # dataset
 train_dataset = datasets.MNIST(root='./dataset/mnist',
